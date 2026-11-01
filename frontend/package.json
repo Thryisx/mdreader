@@ -1,0 +1,35 @@
+{
+  "name": "frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "predev": "node scripts/copy-tinymce.mjs",
+    "build": "node scripts/copy-tinymce.mjs && vue-tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc -b"
+  },
+  "dependencies": {
+    "@tinymce/tinymce-vue": "^6.3.0",
+    "idb": "^8.0.4",
+    "marked": "^18.1.2",
+    "shiki": "^3.23.0",
+    "shiki-stream": "^0.1.4",
+    "tinymce": "^8.10.1",
+    "turndown": "^7.2.4",
+    "turndown-plugin-gfm": "^1.0.2",
+    "vue": "^3.5.44",
+    "vue-router": "^4.6.4",
+    "x-markdown-vue": "^0.0.204"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/turndown": "^5.0.6",
+    "@vitejs/plugin-vue": "^6.0.10",
+    "@vue/tsconfig": "^0.9.1",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.5",
+    "vue-tsc": "^3.3.13"
+  }
+}

@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mdreader.mapper.FileMapper">
+
+    <sql id="FileColumns">
+        id, user_id, parent_id, node_type, title, original_name, md_url, md_object_key, storage_provider,
+        img_urls, file_size, visibility, status, category, summary, created_at, updated_at
+    </sql>
+
+    <sql id="FileDetailColumns">
+        f.id, f.user_id, f.parent_id, f.node_type, f.title, f.original_name, f.md_url, f.md_object_key,
+        f.storage_provider, f.img_urls, f.file_size, f.visibility, f.status, f.category, f.summary,
+        f.created_at, f.updated_at,
+        u.nickname AS author_nickname, u.username AS author_username
+    </sql>
+
+    <select id="selectPublicById" resultType="com.mdreader.entity.entity.FileDO">
+        SELECT <include refid="FileDetailColumns"/>
+        FROM files f
+        LEFT JOIN `user` u ON u.id = f.user_id
+        WHERE f.id = #{id}
+          AND f.visibility = 'PUBLIC'
+          AND f.status = 'PUBLISHED'
+          AND f.node_type = 'FILE'
+    </select>
+
+    <select id="selectById" resultType="com.mdreader.entity.entity.FileDO">
+        SELECT <include refid="FileDetailColumns"/>
+        FROM files f
+        LEFT JOIN `user` u ON u.id = f.user_id
+        WHERE f.id = #{id}
+    </select>
+
+    <select id="selectContentById" resultType="com.mdreader.entity.entity.FileDO">
+        SELECT id, user_id, node_type, content, md_url, visibility, status
+        FROM files
+        WHERE id = #{id}
+    </select>
+
+    <select id="countPublic" resultType="long">
+        SELECT COUNT(*)
+        FROM files
+        WHERE visibility = 'PUBLIC'
+          AND status = 'PUBLISHED'
+          AND node_type = 'FILE'
+        <if test="query.keyword != null and query.keyword != ''">
+            AND title LIKE CONCAT('%', #{query.keyword}, '%')
+        </if>
+        <if test="query.category != null and query.category != '' and query.category != 'UNCATEGORIZED'">
+            AND category = #{query.category}
+        </if>
+        <if test="query.category == 'UNCATEGORIZED'">
+            AND (category IS NULL OR category = '')
+        </if>
+    </select>
+
+    <select id="selectPublicPage" resultType="com.mdreader.entity.entity.FileDO">
+        SELECT <include refid="FileDetailColumns"/>
+        FROM files f
+        LEFT JOIN `user` u ON u.id = f.user_id
+        WHERE f.visibility = 'PUBLIC'
+          AND f.status = 'PUBLISHED'
+          AND f.node_type = 'FILE'
+        <if test="query.keyword != null and query.keyword != ''">
+            AND f.title LIKE CONCAT('%', #{query.keyword}, '%')
+        </if>
+        <if test="query.category != null and query.category != '' and query.category != 'UNCATEGORIZED'">
+            AND f.category = #{query.category}
+        </if>
+        <if test="query.category == 'UNCATEGORIZED'">
+            AND (f.category IS NULL OR f.category = '')
+        </if>
+        ORDER BY f.created_at DESC, f.id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="selectPublicCategories" resultType="com.mdreader.entity.vo.FileCategoryVO">
+        SELECT category, `count`
+        FROM (
+            SELECT COALESCE(NULLIF(TRIM(category), ''), NULL) AS category,
+                   COUNT(*) AS `count`
+            FROM files
+            WHERE visibility = 'PUBLIC'
+              AND status = 'PUBLISHED'
+              AND node_type = 'FILE'
+            GROUP BY COALESCE(NULLIF(TRIM(category), ''), NULL)
+        ) grouped
+        ORDER BY `count` DESC, category ASC
+    </select>
+
+    <select id="countByUserId" resultType="long">
+        SELECT COUNT(*)
+        FROM files
+        WHERE user_id = #{userId}
+          AND node_type = 'FILE'
+    </select>
+
+    <select id="selectListByUserId" resultType="com.mdreader.entity.vo.FileListItemVO">
+        SELECT id, title, original_name, file_size, created_at, updated_at
+        FROM files
+        WHERE user_id = #{userId}
+          AND node_type = 'FILE'
+        ORDER BY updated_at DESC, id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <insert id="insertFile" parameterType="com.mdreader.entity.entity.FileDO"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO files (user_id, parent_id, node_type, title, original_name, content, md_url, md_object_key,
+                           storage_provider, img_urls, file_size, visibility, status, category, summary)
+        VALUES (#{userId}, #{parentId,jdbcType=BIGINT}, #{nodeType}, #{title}, #{originalName}, #{content},
+                #{mdUrl}, #{mdObjectKey}, #{storageProvider}, #{imgUrls}, #{fileSize}, #{visibility}, #{status},
+                #{category}, #{summary})
+    </insert>
+
+    <update id="updateFile">
+        UPDATE files
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="originalName != null">original_name = #{originalName},</if>
+            <if test="content != null">content = #{content},</if>
+            <if test="fileSize != null">file_size = #{fileSize},</if>
+            <if test="visibility != null">visibility = #{visibility},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="category != null">category = NULLIF(#{category}, ''),</if>
+            <if test="summary != null">summary = NULLIF(#{summary}, ''),</if>
+            updated_at = CURRENT_TIMESTAMP(3)
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateMdUrl">
+        UPDATE files
+        SET md_url = #{mdUrl}
+        WHERE id = #{id}
+    </update>
+
+    <sql id="AdminWhere">
+        <where>
+            AND node_type = 'FILE'
+            <if test="query.userId != null">
+                AND user_id = #{query.userId}
+            </if>
+            <if test="query.visibility != null and query.visibility != ''">
+                AND visibility = #{query.visibility}
+            </if>
+            <if test="query.status != null and query.status != ''">
+                AND status = #{query.status}
+            </if>
+            <if test="query.keyword != null and query.keyword != ''">
+                AND (title LIKE CONCAT('%', #{query.keyword}, '%')
+                OR original_name LIKE CONCAT('%', #{query.keyword}, '%'))
+            </if>
+        </where>
+    </sql>
+
+    <select id="countAdmin" resultType="long">
+        SELECT COUNT(*)
+        FROM files f
+        <include refid="AdminWhere"/>
+    </select>
+
+    <select id="selectAdminPage" resultType="com.mdreader.entity.entity.FileDO">
+        SELECT f.id, f.user_id, f.parent_id, f.node_type, f.title, f.original_name, f.storage_provider,
+               f.img_urls, f.file_size, f.visibility, f.status, f.category, f.created_at, f.updated_at,
+               u.nickname AS author_nickname, u.username AS author_username
+        FROM files f
+        LEFT JOIN `user` u ON u.id = f.user_id
+        <include refid="AdminWhere"/>
+        ORDER BY f.updated_at DESC, f.id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="selectAllByUserId" resultType="com.mdreader.entity.entity.FileDO">
+        SELECT <include refid="FileColumns"/>
+        FROM files
+        WHERE user_id = #{userId}
+        ORDER BY id ASC
+    </select>
+
+    <select id="countSiblingByTitle" resultType="int">
+        SELECT COUNT(*)
+        FROM files
+        WHERE user_id = #{userId}
+          AND title = #{title}
+        <choose>
+            <when test="parentId != null">
+                AND parent_id = #{parentId}
+            </when>
+            <otherwise>
+                AND parent_id IS NULL
+            </otherwise>
+        </choose>
+        <if test="excludeId != null">
+            AND id != #{excludeId}
+        </if>
+    </select>
+
+    <update id="updateParent">
+        UPDATE files
+        SET parent_id = #{parentId,jdbcType=BIGINT},
+            updated_at = CURRENT_TIMESTAMP(3)
+        WHERE id = #{id}
+          AND user_id = #{userId}
+    </update>
+
+    <delete id="deleteByIdAndUserId">
+        DELETE FROM files
+        WHERE id = #{id}
+          AND user_id = #{userId}
+    </delete>
+
+</mapper>

@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mdreader.mapper.UserMapper">
+
+    <sql id="PageWhere">
+        <where>
+            <if test="query.keyword != null and query.keyword != ''">
+                AND (username LIKE CONCAT('%', #{query.keyword}, '%')
+                OR email LIKE CONCAT('%', #{query.keyword}, '%'))
+            </if>
+            <if test="query.role != null and query.role != ''">
+                AND role = #{query.role}
+            </if>
+            <if test="query.status != null">
+                AND status = #{query.status}
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectById" resultType="com.mdreader.entity.entity.UserDO">
+        SELECT id, username, nickname, avatar, email, role, status, token_version, must_change_password,
+               created_at, updated_at
+        FROM `user`
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByUsername" resultType="com.mdreader.entity.entity.UserDO">
+        SELECT id, username, nickname, avatar, password_hash, email, role, status, token_version,
+               must_change_password, created_at, updated_at
+        FROM `user`
+        WHERE username = #{username}
+    </select>
+
+    <select id="selectByIdWithPassword" resultType="com.mdreader.entity.entity.UserDO">
+        SELECT id, username, password_hash, role, status, token_version, must_change_password
+        FROM `user`
+        WHERE id = #{id}
+    </select>
+
+    <select id="countPage" resultType="long">
+        SELECT COUNT(*)
+        FROM `user`
+        <include refid="PageWhere"/>
+    </select>
+
+    <select id="selectPage" resultType="com.mdreader.entity.entity.UserDO">
+        SELECT id, username, nickname, avatar, email, role, status, must_change_password, created_at, updated_at
+        FROM `user`
+        <include refid="PageWhere"/>
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countEnabledAdmins" resultType="long">
+        SELECT COUNT(*)
+        FROM `user`
+        WHERE role = 'ADMIN'
+          AND status = 1
+    </select>
+
+    <select id="countByEmail" resultType="long">
+        SELECT COUNT(*)
+        FROM `user`
+        WHERE email = #{email}
+    </select>
+
+    <select id="countByEmailExcludingId" resultType="long">
+        SELECT COUNT(*)
+        FROM `user`
+        WHERE email = #{email}
+          AND id != #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.mdreader.entity.entity.UserDO"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO `user` (username, password_hash, nickname, email, role, status)
+        VALUES (#{username}, #{passwordHash}, #{nickname}, #{email}, #{role}, #{status})
+    </insert>
+
+    <update id="updateProfile">
+        UPDATE `user`
+        <set>
+            <if test="nickname != null">nickname = NULLIF(#{nickname}, ''),</if>
+            <if test="email != null">email = NULLIF(#{email}, ''),</if>
+            <if test="avatar != null">avatar = NULLIF(#{avatar}, ''),</if>
+            updated_at = CURRENT_TIMESTAMP(3)
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateAvatar">
+        UPDATE `user`
+        SET avatar = #{avatar},
+            updated_at = CURRENT_TIMESTAMP(3)
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateAdmin">
+        UPDATE `user`
+        <set>
+            <if test="nickname != null">nickname = NULLIF(#{nickname}, ''),</if>
+            <if test="email != null">email = NULLIF(#{email}, ''),</if>
+            <if test="role != null">role = #{role},</if>
+            <if test="status != null">status = #{status},</if>
+            updated_at = CURRENT_TIMESTAMP(3)
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE `user`
+        SET status = #{status},
+            token_version = token_version + 1,
+            updated_at = CURRENT_TIMESTAMP(3)
+        WHERE id = #{id}
+    </update>
+
+    <update id="updatePassword">
+        UPDATE `user`
+        SET password_hash = #{passwordHash},
+            must_change_password = 0,
+            token_version = token_version + 1,
+            updated_at = CURRENT_TIMESTAMP(3)
+        WHERE id = #{id}
+    </update>
+
+    <update id="resetPassword">
+        UPDATE `user`
+        SET password_hash = #{passwordHash},
+            must_change_password = 1,
+            token_version = token_version + 1,
+            updated_at = CURRENT_TIMESTAMP(3)
+        WHERE id = #{id}
+    </update>
+
+    <update id="incrementTokenVersion">
+        UPDATE `user`
+        SET token_version = token_version + 1,
+            updated_at = CURRENT_TIMESTAMP(3)
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM `user`
+        WHERE id = #{id}
+    </delete>
+
+</mapper>

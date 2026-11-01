@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    url: jdbc:mysql://${DB_HOST}:${DB_PORT:3306}/${DB_NAME:mdreader}?useUnicode=true&characterEncoding=UTF-8&useSSL=true&serverTimezone=Asia/Shanghai
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:20}
+      minimum-idle: ${DB_POOL_MIN_IDLE:5}
+  flyway:
+    baseline-on-migrate: false
+    validate-on-migrate: true
+
+jwt:
+  # 生产环境默认 7 天（10080 分钟）；可通过 JWT_EXPIRATION_MINUTES 覆盖
+  expiration-minutes: ${JWT_EXPIRATION_MINUTES:10080}
+
+app:
+  cors:
+    # 生产环境必须显式配置前端域名，默认不开放跨域
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+
+logging:
+  level:
+    root: info
+    com.mdreader: info
